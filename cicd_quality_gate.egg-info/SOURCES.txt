@@ -1,0 +1,10 @@
+README.md
+setup.py
+cicd_quality_gate.egg-info/PKG-INFO
+cicd_quality_gate.egg-info/SOURCES.txt
+cicd_quality_gate.egg-info/dependency_links.txt
+cicd_quality_gate.egg-info/requires.txt
+cicd_quality_gate.egg-info/top_level.txt
+src/__init__.py
+src/api/__init__.py
+src/api/main.py

@@ -1,0 +1,54 @@
+{
+  "dashboard": {
+    "buildHistory": [
+      {
+        "id": 1,
+        "name": "main-build",
+        "status": "success",
+        "branch": "main",
+        "timestamp": "2025-02-02T18:00:00",
+        "duration": "5m 30s"
+      },
+      {
+        "id": 2,
+        "name": "feature-build",
+        "status": "failure",
+        "branch": "feature/new-api",
+        "timestamp": "2025-02-02T17:30:00",
+        "duration": "4m 45s"
+      },
+      {
+        "id": 3,
+        "name": "hotfix-build",
+        "status": "in_progress",
+        "branch": "hotfix/bug-123",
+        "timestamp": "2025-02-02T17:00:00",
+        "duration": "3m 15s"
+      }
+    ],
+    "recentAnomalies": [
+      {
+        "id": 1,
+        "message": "High CPU usage detected",
+        "severity": "warning",
+        "timestamp": "2025-02-02T18:00:00"
+      },
+      {
+        "id": 2,
+        "message": "Memory leak detected in service A",
+        "severity": "critical",
+        "timestamp": "2025-02-02T17:45:00"
+      }
+    ],
+    "performanceTrends": {
+      "dates": ["2025-01-30", "2025-01-31", "2025-02-01", "2025-02-02"],
+      "successRates": [85, 88, 92, 90],
+      "buildDurations": [12, 10, 11, 9],
+      "currentSuccessRate": 90,
+      "successRateTrend": 1,
+      "averageDuration": 10,
+      "totalBuilds": 45,
+      "activeBuilds": 3
+    }
+  }
+}
