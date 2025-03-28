@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Box,
   Grid,
@@ -33,6 +34,8 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import { fetchDashboardData } from '../features/dashboard/dashboardSlice';
+import { useNavigate } from 'react-router-dom';
 
 // Register ChartJS components
 ChartJS.register(
@@ -46,32 +49,17 @@ ChartJS.register(
 );
 
 function Dashboard() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [data, setData] = useState({
-    buildHistory: [],
-    recentAnomalies: [],
-    performanceTrends: {},
-  });
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { data, loading, error } = useSelector((state) => state.dashboard);
 
   useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 60000); // Refresh every minute
+    dispatch(fetchDashboardData());
+    const interval = setInterval(() => {
+      dispatch(fetchDashboardData());
+    }, 60000); // Refresh every minute
     return () => clearInterval(interval);
-  }, []);
-
-  const fetchDashboardData = async () => {
-    try {
-      const response = await fetch('http://localhost:3001/dashboard');
-      const result = await response.json();
-      setData(result);
-      setLoading(false);
-      setError(null);
-    } catch (err) {
-      setError('Failed to fetch dashboard data');
-      setLoading(false);
-    }
-  };
+  }, [dispatch]);
 
   const getBuildStatusColor = (status) => {
     switch (status.toLowerCase()) {
@@ -112,7 +100,7 @@ function Dashboard() {
     },
   };
 
-  if (loading) {
+  if (loading && (!data || Object.keys(data).length === 0)) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress />
@@ -143,11 +131,11 @@ function Dashboard() {
             </Typography>
             <Line
               data={{
-                labels: data.performanceTrends.dates,
+                labels: data.performanceTrends?.dates || [],
                 datasets: [
                   {
                     label: 'Success Rate (%)',
-                    data: data.performanceTrends.successRates,
+                    data: data.performanceTrends?.successRates || [],
                     borderColor: 'rgb(75, 192, 192)',
                     tension: 0.1,
                   },
@@ -166,11 +154,11 @@ function Dashboard() {
             </Typography>
             <Line
               data={{
-                labels: data.performanceTrends.dates,
+                labels: data.performanceTrends?.dates || [],
                 datasets: [
                   {
                     label: 'Duration (minutes)',
-                    data: data.performanceTrends.buildDurations,
+                    data: data.performanceTrends?.buildDurations || [],
                     borderColor: 'rgb(153, 102, 255)',
                     tension: 0.1,
                   },
@@ -188,7 +176,7 @@ function Dashboard() {
               Recent Builds
             </Typography>
             <List>
-              {data.buildHistory.slice(0, 5).map((build, index) => (
+              {(data.buildHistory || []).slice(0, 5).map((build, index) => (
                 <ListItem key={index}>
                   <ListItemIcon>
                     {build.status === 'success' ? (
@@ -218,7 +206,7 @@ function Dashboard() {
               variant="outlined"
               fullWidth
               sx={{ mt: 2 }}
-              onClick={() => {/* TODO: Navigate to builds page */}}
+              onClick={() => navigate('/build-predictions')}
             >
               View All Builds
             </Button>
@@ -232,7 +220,7 @@ function Dashboard() {
               Recent Anomalies
             </Typography>
             <List>
-              {data.recentAnomalies.length === 0 ? (
+              {(data.recentAnomalies || []).length === 0 ? (
                 <ListItem>
                   <ListItemText
                     primary="No anomalies detected"
@@ -240,7 +228,7 @@ function Dashboard() {
                   />
                 </ListItem>
               ) : (
-                data.recentAnomalies.map((anomaly, index) => (
+                (data.recentAnomalies || []).map((anomaly, index) => (
                   <ListItem key={index}>
                     <ListItemIcon>
                       {getAnomalySeverityIcon(anomaly.severity)}
@@ -258,6 +246,14 @@ function Dashboard() {
                 ))
               )}
             </List>
+            <Button
+              variant="outlined"
+              fullWidth
+              sx={{ mt: 2 }}
+              onClick={() => navigate('/system-metrics')}
+            >
+              View System Metrics
+            </Button>
           </Paper>
         </Grid>
 
@@ -271,12 +267,12 @@ function Dashboard() {
               <Grid item xs={12} sm={6} md={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="primary">
-                    {data.performanceTrends.currentSuccessRate}%
+                    {data.performanceTrends?.currentSuccessRate || 0}%
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
                     Current Success Rate
                   </Typography>
-                  {data.performanceTrends.successRateTrend > 0 ? (
+                  {data.performanceTrends?.successRateTrend > 0 ? (
                     <TrendingUp color="success" />
                   ) : (
                     <TrendingDown color="error" />
@@ -286,7 +282,7 @@ function Dashboard() {
               <Grid item xs={12} sm={6} md={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="primary">
-                    {data.performanceTrends.averageDuration}m
+                    {data.performanceTrends?.averageDuration || 0}m
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
                     Average Build Time
@@ -296,7 +292,7 @@ function Dashboard() {
               <Grid item xs={12} sm={6} md={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="primary">
-                    {data.performanceTrends.totalBuilds}
+                    {data.performanceTrends?.totalBuilds || 0}
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
                     Total Builds Today
@@ -306,7 +302,7 @@ function Dashboard() {
               <Grid item xs={12} sm={6} md={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="primary">
-                    {data.performanceTrends.activeBuilds}
+                    {data.performanceTrends?.activeBuilds || 0}
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
                     Active Builds

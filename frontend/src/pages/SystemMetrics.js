@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Box,
   Paper,
@@ -6,20 +7,19 @@ import {
   Grid,
   LinearProgress,
   Alert,
+  Button,
+  ButtonGroup,
 } from '@mui/material';
 import { Line } from 'react-chartjs-2';
+import { fetchSystemMetrics, detectAnomalies, setTimeRange } from '../features/systemMetrics/systemMetricsSlice';
 
 function SystemMetrics() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [metrics, setMetrics] = useState({
-    cpu: [],
-    memory: [],
-    disk: [],
-    anomalies: [],
-  });
+  const dispatch = useDispatch();
+  const { metrics, anomalies, loading, error, timeRange } = useSelector(
+    (state) => state.systemMetrics
+  );
 
-  // Sample data for the charts
+  // Create chart data for the metrics
   const createChartData = (label, data, color) => ({
     labels: data.map((_, index) => `${index}m ago`),
     datasets: [
@@ -48,36 +48,36 @@ function SystemMetrics() {
   };
 
   useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        // TODO: Replace with actual API call
-        const response = await fetch('/api/metrics/system');
-        const data = await response.json();
-        setMetrics(data);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch system metrics');
-        setLoading(false);
-      }
-    };
-
-    // Initial fetch
-    fetchMetrics();
-
-    // Set up polling every 60 seconds
-    const interval = setInterval(fetchMetrics, 60000);
-
+    // Fetch system metrics on component mount
+    dispatch(fetchSystemMetrics());
+    
+    // Set up polling based on the selected time range
+    const interval = setInterval(() => {
+      dispatch(fetchSystemMetrics());
+    }, 60000); // Poll every minute
+    
     return () => clearInterval(interval);
-  }, []);
+  }, [dispatch]);
+
+  // Handle time range change
+  const handleTimeRangeChange = (range) => {
+    dispatch(setTimeRange(range));
+    dispatch(fetchSystemMetrics());
+  };
+
+  // Handle anomaly detection
+  const handleDetectAnomalies = () => {
+    dispatch(detectAnomalies());
+  };
 
   // Sample data (replace with actual data from API)
   const sampleData = {
-    cpu: Array.from({ length: 30 }, () => Math.random() * 100),
-    memory: Array.from({ length: 30 }, () => Math.random() * 100),
-    disk: Array.from({ length: 30 }, () => Math.random() * 100),
+    cpu: metrics.cpu.length > 0 ? metrics.cpu : Array.from({ length: 30 }, () => Math.random() * 100),
+    memory: metrics.memory.length > 0 ? metrics.memory : Array.from({ length: 30 }, () => Math.random() * 100),
+    disk: metrics.disk.length > 0 ? metrics.disk : Array.from({ length: 30 }, () => Math.random() * 100),
   };
 
-  if (loading) {
+  if (loading && Object.keys(metrics).every(key => metrics[key].length === 0)) {
     return (
       <Box sx={{ width: '100%' }}>
         <LinearProgress />
@@ -96,6 +96,38 @@ function SystemMetrics() {
           {error}
         </Alert>
       )}
+
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <ButtonGroup variant="outlined" aria-label="time range">
+          <Button 
+            onClick={() => handleTimeRangeChange('1h')}
+            variant={timeRange === '1h' ? 'contained' : 'outlined'}
+          >
+            1 Hour
+          </Button>
+          <Button 
+            onClick={() => handleTimeRangeChange('6h')}
+            variant={timeRange === '6h' ? 'contained' : 'outlined'}
+          >
+            6 Hours
+          </Button>
+          <Button 
+            onClick={() => handleTimeRangeChange('24h')}
+            variant={timeRange === '24h' ? 'contained' : 'outlined'}
+          >
+            24 Hours
+          </Button>
+        </ButtonGroup>
+        
+        <Button 
+          variant="contained" 
+          color="secondary" 
+          onClick={handleDetectAnomalies}
+          disabled={loading}
+        >
+          Detect Anomalies
+        </Button>
+      </Box>
 
       <Grid container spacing={3}>
         {/* CPU Usage */}
@@ -139,17 +171,17 @@ function SystemMetrics() {
 
         {/* Anomaly Detection */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2, height: 300 }}>
+          <Paper sx={{ p: 2, height: 300, overflow: 'auto' }}>
             <Typography variant="h6" gutterBottom>
               Anomaly Detection
             </Typography>
             <Box sx={{ mt: 2 }}>
-              {metrics.anomalies.length === 0 ? (
+              {anomalies.length === 0 ? (
                 <Alert severity="success">No anomalies detected</Alert>
               ) : (
-                metrics.anomalies.map((anomaly, index) => (
-                  <Alert key={index} severity="warning" sx={{ mb: 1 }}>
-                    {anomaly.message}
+                anomalies.map((anomaly, index) => (
+                  <Alert key={index} severity={anomaly.severity === 'high' ? 'error' : 'warning'} sx={{ mb: 1 }}>
+                    {anomaly.metric}: {anomaly.value.toFixed(1)}% (Threshold: {anomaly.threshold}%)
                   </Alert>
                 ))
               )}
